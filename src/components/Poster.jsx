@@ -180,17 +180,25 @@ function renderHeadline(s) {
 }
 
 function PhoneFrame({ device, screenshot }) {
-  const isPad = device.id.startsWith('ipad');
+  const n = device.notch;
   return (
     <div
       style={{
         width: device.shellW + 'px',
         height: device.shellH + 'px',
         borderRadius: device.shellRadius + 'px',
-        background: '#1a1814',
+        // titanium-frame look: thin highlight ring + dark body
+        background:
+          'linear-gradient(160deg, #2a2520 0%, #1a1814 38%, #100e0c 100%)',
         padding: device.shellPadding + 'px',
         boxShadow:
-          '0 0 0 2px rgba(60,40,20,.18), 0 60px 120px rgba(60,40,20,.22), inset 0 2px 2px rgba(255,255,255,.04)',
+          // outer thin ring (frame edge)
+          '0 0 0 2px rgba(0,0,0,.35),' +
+          // soft drop shadow
+          ' 0 60px 120px rgba(60,40,20,.22),' +
+          // inner top highlight (subtle bevel)
+          ' inset 0 2px 1px rgba(255,255,255,.06),' +
+          ' inset 0 -1px 0 rgba(0,0,0,.4)',
         position: 'relative',
         boxSizing: 'border-box',
       }}
@@ -203,6 +211,8 @@ function PhoneFrame({ device, screenshot }) {
           overflow: 'hidden',
           background: 'var(--cs-cream)',
           position: 'relative',
+          // subtle inner shadow at the screen edge
+          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.5)',
         }}
       >
         {screenshot?.dataUrl ? (
@@ -221,22 +231,135 @@ function PhoneFrame({ device, screenshot }) {
           <PlaceholderScreen device={device} />
         )}
       </div>
-      {!isPad && device.notch ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: device.notch.top,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: device.notch.w,
-            height: device.notch.h,
-            borderRadius: 48,
-            background: '#000',
-            zIndex: 100,
-          }}
-        />
-      ) : null}
+
+      {n?.kind === 'island' && <DynamicIsland notch={n} />}
+      {n?.kind === 'notch' && <ClassicNotch notch={n} padding={device.shellPadding} />}
+      {n?.kind === 'home' && <HomeEra notch={n} device={device} />}
     </div>
+  );
+}
+
+// iPhone 14 Pro+ Dynamic Island — a floating black pill near the top.
+function DynamicIsland({ notch }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: notch.top,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: notch.w,
+        height: notch.h,
+        // capsule shape: half height = full radius
+        borderRadius: notch.h / 2,
+        background: '#000',
+        zIndex: 100,
+        // tiny glints to suggest sensors
+        boxShadow:
+          'inset 0 0 0 1px rgba(40,40,40,.6),' +
+          ' inset 8px 0 6px rgba(0,0,0,.0)',
+      }}
+    >
+      {/* front camera dot */}
+      <div
+        style={{
+          position: 'absolute',
+          right: notch.h * 0.28,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: notch.h * 0.34,
+          height: notch.h * 0.34,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 35% 35%, #2c2c30 0%, #0a0a0c 70%)',
+          boxShadow: 'inset 0 0 0 1px rgba(80,80,90,.4)',
+        }}
+      />
+    </div>
+  );
+}
+
+// iPhone X..13-era top notch — flush against the screen edge.
+function ClassicNotch({ notch, padding }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: padding,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: notch.w,
+        height: notch.h,
+        background: '#000',
+        // top edge is flat (matches the screen top), bottom is rounded
+        borderBottomLeftRadius: notch.h,
+        borderBottomRightRadius: notch.h,
+        zIndex: 100,
+      }}
+    >
+      {/* speaker slit + camera dot */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '52%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: notch.w * 0.34,
+          height: 6,
+          borderRadius: 3,
+          background: '#222',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          top: '52%',
+          right: notch.w * 0.18,
+          transform: 'translateY(-50%)',
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 35% 35%, #2c2c30 0%, #060608 75%)',
+        }}
+      />
+    </div>
+  );
+}
+
+// iPhone 8 Plus / pre-X home-button era — earpiece slit + front camera + home button.
+function HomeEra({ notch }) {
+  return (
+    <>
+      {/* earpiece */}
+      <div
+        style={{
+          position: 'absolute',
+          top: notch.earpiece.top,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: notch.earpiece.w,
+          height: notch.earpiece.h,
+          borderRadius: notch.earpiece.h / 2,
+          background: '#0a0a0c',
+          zIndex: 100,
+        }}
+      />
+      {/* front camera */}
+      <div
+        style={{
+          position: 'absolute',
+          top: notch.earpiece.top + (notch.earpiece.h - notch.camera.r * 2) / 2,
+          left: `calc(50% - ${notch.camera.offset}px)`,
+          width: notch.camera.r * 2,
+          height: notch.camera.r * 2,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle at 35% 35%, #2c2c30 0%, #060608 75%)',
+          zIndex: 100,
+        }}
+      />
+    </>
   );
 }
 

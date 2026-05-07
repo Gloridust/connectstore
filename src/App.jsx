@@ -10,7 +10,7 @@ export default function App() {
   const s = useStore();
   const project = useCurrentProject();
   const lang = s.uiLang;
-  const [tab, setTab] = useState('metadata');
+  const [tab, setTab] = useState('screenshots');
   const [showNew, setShowNew] = useState(false);
 
   return (
@@ -28,16 +28,16 @@ export default function App() {
               <div className="grow" />
               <div className="seg">
                 <button
-                  className={tab === 'metadata' ? 'on' : ''}
-                  onClick={() => setTab('metadata')}
-                >
-                  {t(lang, 'tab.metadata')}
-                </button>
-                <button
                   className={tab === 'screenshots' ? 'on' : ''}
                   onClick={() => setTab('screenshots')}
                 >
                   {t(lang, 'tab.screenshots')}
+                </button>
+                <button
+                  className={tab === 'metadata' ? 'on' : ''}
+                  onClick={() => setTab('metadata')}
+                >
+                  {t(lang, 'tab.metadata')}
                 </button>
               </div>
             </div>

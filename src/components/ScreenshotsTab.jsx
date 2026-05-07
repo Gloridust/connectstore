@@ -218,6 +218,7 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
   const frameRef = useRef(null);
   const fileRef = useRef(null);
   const [scale, setScale] = useState(0.2);
+  const [dragOver, setDragOver] = useState(null); // 'frame' | 'upload' | null
 
   useLayoutEffect(() => {
     const el = frameRef.current;
@@ -231,16 +232,39 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
     return () => ro.disconnect();
   }, [device.posterW, device.posterH]);
 
-  const onFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const ingestFile = (f) => {
+    if (!f || !f.type?.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = () => {
       onPatch({ screenshot: { dataUrl: String(reader.result), name: f.name } });
     };
     reader.readAsDataURL(f);
+  };
+
+  const onFile = (e) => {
+    ingestFile(e.target.files?.[0]);
     e.target.value = '';
   };
+
+  const dragHandlers = (key) => ({
+    onDragOver: (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        if (dragOver !== key) setDragOver(key);
+      }
+    },
+    onDragLeave: (e) => {
+      // only clear when leaving the element itself, not its children
+      if (e.currentTarget.contains(e.relatedTarget)) return;
+      setDragOver((cur) => (cur === key ? null : cur));
+    },
+    onDrop: (e) => {
+      e.preventDefault();
+      setDragOver(null);
+      ingestFile(e.dataTransfer?.files?.[0]);
+    },
+  });
 
   const appName = project.appName?.[poster.locale] ||
     project.appName?.[project.locales[0]] ||
@@ -264,7 +288,12 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
         </select>
       </div>
 
-      <div className="pc-frame" ref={frameRef} style={{ '--ar': ar }}>
+      <div
+        className={'pc-frame' + (dragOver === 'frame' ? ' drag-over' : '')}
+        ref={frameRef}
+        style={{ '--ar': ar }}
+        {...dragHandlers('frame')}
+      >
         <div
           className="pc-scaler"
           style={{ transform: `scale(${scale})`, width: device.posterW, height: device.posterH }}
@@ -278,6 +307,11 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
             screenshot={poster.screenshot}
           />
         </div>
+        {dragOver === 'frame' && (
+          <div className="pc-frame-drop">
+            {t(lang, 'shots.dropToReplace')}
+          </div>
+        )}
       </div>
 
       <div className="pc-controls">
@@ -310,8 +344,9 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
         </div>
 
         <div
-          className="pc-upload"
+          className={'pc-upload' + (dragOver === 'upload' ? ' drag-over' : '')}
           onClick={() => fileRef.current?.click()}
+          {...dragHandlers('upload')}
         >
           <input
             ref={fileRef}
@@ -320,9 +355,11 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
             style={{ display: 'none' }}
             onChange={onFile}
           />
-          {poster.screenshot
-            ? `${t(lang, 'shots.replaceScreenshot')} — ${poster.screenshot.name}`
-            : t(lang, 'shots.uploadScreenshot')}
+          {dragOver === 'upload'
+            ? t(lang, 'shots.dropToReplace')
+            : poster.screenshot
+              ? `${t(lang, 'shots.replaceScreenshot')} — ${poster.screenshot.name}`
+              : t(lang, 'shots.uploadOrDrag')}
           <div className="hint">
             {t(lang, 'shots.uploadHint', {
               w: device.posterW,
