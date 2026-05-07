@@ -138,3 +138,5 @@ dist
 # Claude Code local-only files
 .claude/settings.local.json
 .claude/worktrees/
+/.claude
+.DS_Store
