@@ -362,6 +362,106 @@ select {
   background: var(--accent-2);
 }
 
+.icon-upload {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--paper);
+  border: 1px solid #d8cfb8;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+.icon-upload .icon-slot {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  border: 1px dashed #c5b894;
+  background: #faf3dd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+.icon-upload .icon-slot:hover {
+  border-color: var(--accent);
+}
+.icon-upload .icon-slot.drag-over {
+  border-style: solid;
+  border-color: var(--accent);
+  background: #f4ecd8;
+}
+.icon-upload .icon-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.icon-upload .icon-slot .ph {
+  text-align: center;
+  color: #9a9080;
+}
+.icon-upload .icon-slot .ph .big {
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1;
+}
+.icon-upload .icon-slot .ph .hint {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+.icon-upload .icon-info {
+  flex: 1;
+  min-width: 0;
+}
+.icon-upload .icon-info .lab {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 16px;
+  color: #1a1814;
+}
+.icon-upload .icon-info .hint {
+  font-size: 12px;
+  color: #5a5040;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.icon-upload .icon-info .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.icon-upload .icon-info .actions button {
+  border: 1px solid #d8cfb8;
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.icon-upload .icon-info .actions button.ghost {
+  background: transparent;
+  color: #5a5040;
+  border-color: #d8cfb8;
+}
+.icon-upload .icon-info .actions button.ghost:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.swatch-img {
+  object-fit: cover;
+  border-radius: 4px;
+}
+
 .locale-bar {
   display: flex;
   flex-wrap: wrap;

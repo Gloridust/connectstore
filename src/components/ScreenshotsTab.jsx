@@ -355,6 +355,7 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
             appName={appName}
             device={poster.device}
             screenshot={poster.screenshot}
+            icon={project.icon}
           />
         </div>
         {dragOver === 'frame' && (
