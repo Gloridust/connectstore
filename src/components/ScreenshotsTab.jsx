@@ -9,7 +9,7 @@ import { localeLabel } from '../utils/fields';
 import { uid } from '../state/storage';
 import Poster from './Poster';
 
-const KEY_PRESETS = [
+const ACCENT_PRESETS = [
   '#1a2f66', // ink blue
   '#2d5e3e', // forest
   '#7a3a3a', // brick
@@ -19,15 +19,47 @@ const KEY_PRESETS = [
   '#000000', // mono
 ];
 
+const BG_PRESETS = [
+  '#f4ecd8', // cream (default)
+  '#f6f1e8', // warm paper
+  '#eef2ec', // sage mist
+  '#ecf0f5', // ice blue
+  '#f5e8e2', // peach
+  '#efe9f3', // lavender mist
+  '#fffaf0', // bright ivory
+];
+
+// Accept the legacy single-color theme as the accent color, fall back to
+// defaults otherwise. Returns { bgColor, accentColor }.
+function resolveTheme(t) {
+  const accent = t?.accentColor || t?.keyColor || '#1a2f66';
+  const bg = t?.bgColor || '#f4ecd8';
+  return { bgColor: bg, accentColor: accent };
+}
+
 export default function ScreenshotsTab({ project, lang }) {
+  const theme = resolveTheme(project.theme);
+
   const palette = useMemo(
-    () => buildPalette(project.theme?.keyColor || '#1a2f66'),
-    [project.theme?.keyColor],
+    () => buildPalette(theme.bgColor, theme.accentColor),
+    [theme.bgColor, theme.accentColor],
   );
 
-  const setKeyColor = (hex) => {
+  const setBgColor = (hex) => {
     mutateProject(project.id, (p) => {
-      p.theme = { ...(p.theme || {}), keyColor: hex };
+      p.theme = { ...(p.theme || {}), bgColor: hex };
+      // drop legacy keyColor so future reads use bgColor/accentColor only
+      if (p.theme.keyColor && !p.theme.accentColor) {
+        p.theme.accentColor = p.theme.keyColor;
+      }
+      delete p.theme.keyColor;
+    });
+  };
+  const setAccentColor = (hex) => {
+    mutateProject(project.id, (p) => {
+      p.theme = { ...(p.theme || {}), accentColor: hex };
+      if (!p.theme.bgColor) p.theme.bgColor = '#f4ecd8';
+      delete p.theme.keyColor;
     });
   };
 
@@ -120,37 +152,20 @@ export default function ScreenshotsTab({ project, lang }) {
         </button>
       </div>
 
-      {/* Theme bar */}
+      {/* Theme bar — bg color + accent color */}
       <div className="theme-bar">
-        <span className="lab">{t(lang, 'shots.keyColor')}:</span>
-        <input
-          type="color"
-          value={project.theme?.keyColor || '#1a2f66'}
-          onChange={(e) => setKeyColor(e.target.value)}
+        <ColorField
+          label={t(lang, 'shots.bgColor')}
+          value={theme.bgColor}
+          presets={BG_PRESETS}
+          onChange={setBgColor}
         />
-        <input
-          type="text"
-          value={project.theme?.keyColor || '#1a2f66'}
-          onChange={(e) => {
-            const v = e.target.value.trim();
-            if (/^#?[0-9a-fA-F]{3,6}$/.test(v)) setKeyColor(v.startsWith('#') ? v : '#' + v);
-          }}
+        <ColorField
+          label={t(lang, 'shots.accentColor')}
+          value={theme.accentColor}
+          presets={ACCENT_PRESETS}
+          onChange={setAccentColor}
         />
-        <div className="preset-row">
-          {KEY_PRESETS.map((c) => {
-            const cur = (project.theme?.keyColor || '#1a2f66').toLowerCase();
-            const on = cur === c.toLowerCase();
-            return (
-              <button
-                key={c}
-                className={'preset' + (on ? ' on' : '')}
-                style={{ background: c }}
-                title={c}
-                onClick={() => setKeyColor(c)}
-              />
-            );
-          })}
-        </div>
         <span className="lab" style={{ marginLeft: 'auto' }}>{t(lang, 'shots.theme')}:</span>
         <div className="swatches">
           {['cream', 'card', 'ink', 'ink2', 'char', 'char2', 'rouge'].map((k) => (
@@ -208,6 +223,41 @@ export default function ScreenshotsTab({ project, lang }) {
 
       {/* Hidden offscreen render area used by exporter */}
       <div id="export-stage" />
+    </div>
+  );
+}
+
+function ColorField({ label, value, presets, onChange }) {
+  return (
+    <div className="color-field">
+      <span className="lab">{label}:</span>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value.trim();
+          if (/^#?[0-9a-fA-F]{3,6}$/.test(v)) onChange(v.startsWith('#') ? v : '#' + v);
+        }}
+      />
+      <div className="preset-row">
+        {presets.map((c) => {
+          const on = (value || '').toLowerCase() === c.toLowerCase();
+          return (
+            <button
+              key={c}
+              className={'preset' + (on ? ' on' : '')}
+              style={{ background: c }}
+              title={c}
+              onClick={() => onChange(c)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

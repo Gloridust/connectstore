@@ -44,7 +44,10 @@ export default function Sidebar() {
             >
               <span
                 className="swatch"
-                style={{ background: p.theme?.keyColor || '#1a2f66' }}
+                style={{
+                  background:
+                    p.theme?.accentColor || p.theme?.keyColor || '#1a2f66',
+                }}
               />
               <span className="name">{p.name || '—'}</span>
               <button
