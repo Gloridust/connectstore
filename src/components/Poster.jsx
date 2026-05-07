@@ -15,7 +15,7 @@ import { getDevice } from '../utils/devices';
 // We embed the palette as inline CSS vars on a wrapper so html-to-image picks
 // it up even when the node is cloned to the offscreen export stage.
 
-export default function Poster({ id, palette, copy, appName, device, screenshot }) {
+export default function Poster({ id, palette, copy, appName, device, screenshot, icon }) {
   const d = getDevice(device);
   const isPad = device.startsWith('ipad');
   const cssVars = paletteToCssVars(palette);
@@ -131,18 +131,36 @@ export default function Poster({ id, palette, copy, appName, device, screenshot 
       >
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
+            width: 60,
+            height: 60,
+            borderRadius: 14,
             background: 'var(--cs-ink)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            overflow: 'hidden',
+            // soft shadow + inner highlight to feel like the iOS app icon mask
+            boxShadow:
+              '0 4px 12px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.12)',
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 16 16" fill="none">
-            <path d="M5 2 L11 2 Q12 2 12 3 L12 14 L8 11.5 L4 14 L4 3 Q4 2 5 2 Z" fill="var(--cs-card)" />
-          </svg>
+          {icon?.dataUrl ? (
+            <img
+              src={icon.dataUrl}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+              crossOrigin="anonymous"
+            />
+          ) : (
+            <svg width="34" height="34" viewBox="0 0 16 16" fill="none">
+              <path d="M5 2 L11 2 Q12 2 12 3 L12 14 L8 11.5 L4 14 L4 3 Q4 2 5 2 Z" fill="var(--cs-card)" />
+            </svg>
+          )}
         </div>
         <div
           style={{

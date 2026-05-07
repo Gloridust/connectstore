@@ -86,7 +86,8 @@ export function defaultProject(name) {
     locales: ['en-US', 'zh-Hans'],
     fields: [], // default fields are merged in at read time via fields.js
     values: {},
-    theme: { keyColor: '#1a2f66' },
+    icon: null, // { dataUrl, name } | null — App Store Connect 1024x1024 icon
+    theme: { bgColor: '#f4ecd8', accentColor: '#1a2f66' },
     appName: {
       'en-US': { main: name, accent: '' },
       'zh-Hans': { main: name, accent: '' },

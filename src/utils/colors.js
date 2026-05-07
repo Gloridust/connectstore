@@ -79,46 +79,82 @@ export function hslToHex(hsl) {
   return rgbToHex(hslToRgb(hsl));
 }
 
-// Build a poster palette from a key (accent) color.
-// Strategy:
-//   ink   = key color (slightly darkened if too light)
-//   ink2  = lighter / softer twin of ink
-//   cream = very light desaturated tint of the key hue (background)
-//   card  = slightly lighter cream for surfaces
-//   char  = near-black tinted with the same hue (primary text)
-//   char2 = mid-tone for secondary text
-//   char3 = light mute for meta
+// Build a poster palette from TWO source colors:
+//   bgHex     — drives the poster background ("cream") and surface ("card")
+//   accentHex — drives the headline emphasis ("ink"/"ink2") and brand mark
+//
+// Text neutrals are pulled toward the accent hue (so they read as part of the
+// same family) while bg variants are pulled from the background hue. This
+// keeps "warm paper + cool ink" combos coherent (e.g. cream paper + navy ink).
+//
+//   ink   = accent (clamped to a readable dark)
+//   ink2  = lighter twin of ink (used for italic emphasis)
+//   cream = very light, low-sat tint of the bg hue (background)
+//   card  = slightly lighter / different cream for surfaces
+//   char  = near-black tinted with the accent hue (primary text)
+//   char2 = mid-tone tinted with accent (secondary text)
+//   char3 = light mute (meta)
 //   char4 = very pale divider
 //   rouge = complementary warm accent
-export function buildPalette(keyHex) {
-  const baseHsl = hexToHsl(keyHex);
-  const h = baseHsl.h;
-  const s = clamp(baseHsl.s, 0, 1);
+export function buildPalette(bgHex, accentHex) {
+  // Backward-compat: if called with one arg, treat it as accent and use
+  // a default cream background.
+  if (accentHex == null) {
+    accentHex = bgHex;
+    bgHex = '#f4ecd8';
+  }
 
-  // Ensure ink reads as a deep accent; clamp lightness 18%–45%
-  const inkL = clamp(baseHsl.l, 0.18, 0.45);
-  const ink = hslToHex({ h, s, l: inkL });
+  const bgHsl = hexToHsl(bgHex);
+  const accentHsl = hexToHsl(accentHex);
+
+  // ---- Background family (from bgHex) ----
+  // Allow user to pick a richly-colored swatch but render the actual paper
+  // softer: clamp lightness ≥ 0.86 and saturation ≤ 0.28 so text stays legible.
+  const bgL = clamp(bgHsl.l, 0.82, 0.97);
+  const bgS = Math.min(bgHsl.s, 0.32);
+  const cream = hslToHex({ h: bgHsl.h, s: bgS, l: bgL });
+  // Card is brighter/cleaner than cream (sits on top of it)
+  const card = hslToHex({
+    h: bgHsl.h,
+    s: clamp(bgS * 0.85, 0, 0.28),
+    l: clamp(bgL + 0.04, 0.86, 0.99),
+  });
+
+  // ---- Accent family (from accentHex) ----
+  const ah = accentHsl.h;
+  const aS = clamp(accentHsl.s, 0, 1);
+  const inkL = clamp(accentHsl.l, 0.18, 0.45);
+  const ink = hslToHex({ h: ah, s: aS, l: inkL });
   const ink2 = hslToHex({
-    h,
-    s: clamp(s * 0.85, 0, 1),
+    h: ah,
+    s: clamp(aS * 0.85, 0, 1),
     l: clamp(inkL + 0.15, 0, 0.7),
   });
 
-  // Warm background — same hue, very low sat, very high lightness
-  const cream = hslToHex({ h, s: clamp(s * 0.18, 0, 0.18), l: 0.92 });
-  const card = hslToHex({ h, s: clamp(s * 0.14, 0, 0.16), l: 0.96 });
+  // ---- Text neutrals — tinted toward the ACCENT hue, so the type belongs
+  // to the same family as the headline emphasis even on a warm bg ----
+  const char = hslToHex({ h: ah, s: 0.08, l: 0.1 });
+  const char2 = hslToHex({ h: ah, s: 0.1, l: 0.32 });
+  const char3 = hslToHex({ h: ah, s: 0.06, l: 0.55 });
+  const char4 = hslToHex({ h: ah, s: 0.05, l: 0.82 });
 
-  // Text neutrals tinted with the same hue
-  const char = hslToHex({ h, s: 0.06, l: 0.1 });
-  const char2 = hslToHex({ h, s: 0.08, l: 0.32 });
-  const char3 = hslToHex({ h, s: 0.06, l: 0.55 });
-  const char4 = hslToHex({ h, s: 0.05, l: 0.82 });
-
-  // Complementary warm accent (rouge) — hue + 180, warmed up
-  const rougeHue = (h + 200) % 360;
+  // Complementary accent (rouge) — accent hue + 200, warmed up
+  const rougeHue = (ah + 200) % 360;
   const rouge = hslToHex({ h: rougeHue, s: 0.55, l: 0.5 });
 
-  return { key: keyHex, ink, ink2, cream, card, char, char2, char3, char4, rouge };
+  return {
+    bg: bgHex,
+    accent: accentHex,
+    ink,
+    ink2,
+    cream,
+    card,
+    char,
+    char2,
+    char3,
+    char4,
+    rouge,
+  };
 }
 
 export function paletteToCssVars(p) {

@@ -42,10 +42,21 @@ export default function Sidebar() {
               className={'project-row' + (p.id === s.currentProjectId ? ' active' : '')}
               onClick={() => setCurrentProject(p.id)}
             >
-              <span
-                className="swatch"
-                style={{ background: p.theme?.keyColor || '#1a2f66' }}
-              />
+              {p.icon?.dataUrl ? (
+                <img
+                  className="swatch swatch-img"
+                  src={p.icon.dataUrl}
+                  alt=""
+                />
+              ) : (
+                <span
+                  className="swatch"
+                  style={{
+                    background:
+                      p.theme?.accentColor || p.theme?.keyColor || '#1a2f66',
+                  }}
+                />
+              )}
               <span className="name">{p.name || '—'}</span>
               <button
                 className="del"

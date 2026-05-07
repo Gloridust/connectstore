@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { mutateProject } from '../state/storage';
 import { t } from '../i18n';
 import { DEFAULT_FIELDS, COMMON_LOCALES, FIELD_TYPES, localeLabel } from '../utils/fields';
+import IconUpload from './IconUpload';
 
 export default function MetadataTab({ project, lang }) {
   const [showAddField, setShowAddField] = useState(false);
@@ -83,6 +84,8 @@ export default function MetadataTab({ project, lang }) {
           + {t(lang, 'meta.addCustomField')}
         </button>
       </div>
+
+      <IconUpload project={project} lang={lang} />
 
       <div className="locale-bar">
         <span className="lab">{t(lang, 'meta.locales')}:</span>
