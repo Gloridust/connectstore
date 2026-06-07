@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as htmlToImage from 'html-to-image';
 import JSZip from 'jszip';
 import { mutateProject } from '../state/storage';
 import { t } from '../i18n';
-import { buildPalette, paletteToCssVars } from '../utils/colors';
+import { buildPalette } from '../utils/colors';
 import { DEVICE_LIST, getDevice } from '../utils/devices';
 import { localeLabel } from '../utils/fields';
+import { DEFAULT_LAYOUT, normalizeLayout } from '../utils/layout';
 import { uid } from '../state/storage';
 import Poster from './Poster';
 
@@ -74,14 +75,18 @@ export default function ScreenshotsTab({ project, lang }) {
   const addPoster = () => {
     mutateProject(project.id, (p) => {
       const locale = p.locales[0] || 'en-US';
+      const prev = p.posters?.[p.posters.length - 1];
+      // Inherit the previous poster's layout & device so an App Store set
+      // stays visually consistent by default.
       p.posters = [
         ...(p.posters || []),
         {
           id: uid('shot'),
-          device: 'iphone-6.9',
+          device: prev?.device || 'iphone-6.9',
           locale,
           copy: { eyebrow: '', headline: '', body: '' },
           screenshot: null,
+          layout: prev?.layout ? { ...prev.layout } : { ...DEFAULT_LAYOUT },
         },
       ];
     });
@@ -103,6 +108,28 @@ export default function ScreenshotsTab({ project, lang }) {
     });
   };
 
+  const updatePosterLayout = (sid, patch) => {
+    mutateProject(project.id, (p) => {
+      const i = p.posters.findIndex((x) => x.id === sid);
+      if (i < 0) return;
+      p.posters[i] = {
+        ...p.posters[i],
+        layout: { ...normalizeLayout(p.posters[i].layout), ...patch },
+      };
+    });
+  };
+
+  // Propagate one poster's layout (and theme is project-wide already) to every
+  // poster — the fast path to a uniform App Store set.
+  const applyLayoutToAll = (sid) => {
+    mutateProject(project.id, (p) => {
+      const src = p.posters.find((x) => x.id === sid);
+      if (!src) return;
+      const L = normalizeLayout(src.layout);
+      p.posters = p.posters.map((x) => ({ ...x, layout: { ...L } }));
+    });
+  };
+
   const removePoster = (sid) => {
     mutateProject(project.id, (p) => {
       p.posters = p.posters.filter((x) => x.id !== sid);
@@ -113,8 +140,18 @@ export default function ScreenshotsTab({ project, lang }) {
     mutateProject(project.id, (p) => {
       const i = p.posters.findIndex((x) => x.id === sid);
       if (i < 0) return;
-      const clone = { ...p.posters[i], id: uid('shot') };
+      const clone = { ...JSON.parse(JSON.stringify(p.posters[i])), id: uid('shot') };
       p.posters.splice(i + 1, 0, clone);
+    });
+  };
+
+  const movePoster = (sid, dir) => {
+    mutateProject(project.id, (p) => {
+      const i = p.posters.findIndex((x) => x.id === sid);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= p.posters.length) return;
+      const arr = p.posters;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     });
   };
 
@@ -208,13 +245,17 @@ export default function ScreenshotsTab({ project, lang }) {
               key={p.id}
               poster={p}
               index={idx}
+              count={project.posters.length}
               project={project}
               palette={palette}
               lang={lang}
               onPatch={(patch) => updatePoster(p.id, patch)}
               onCopy={(k, v) => updatePosterCopy(p.id, k, v)}
+              onLayout={(patch) => updatePosterLayout(p.id, patch)}
+              onApplyAll={() => applyLayoutToAll(p.id)}
               onRemove={() => removePoster(p.id)}
               onDuplicate={() => duplicatePoster(p.id)}
+              onMove={(dir) => movePoster(p.id, dir)}
               onExport={() => exportOne(p.id)}
             />
           ))}
@@ -262,13 +303,15 @@ function ColorField({ label, value, presets, onChange }) {
   );
 }
 
-function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, onRemove, onDuplicate, onExport }) {
+function PosterCard({ poster, index, count, project, palette, lang, onPatch, onCopy, onLayout, onApplyAll, onRemove, onDuplicate, onMove, onExport }) {
   const device = getDevice(poster.device);
   const ar = `${device.posterW}/${device.posterH}`;
   const frameRef = useRef(null);
   const fileRef = useRef(null);
   const [scale, setScale] = useState(0.2);
   const [dragOver, setDragOver] = useState(null); // 'frame' | 'upload' | null
+  const [showLayout, setShowLayout] = useState(false);
+  const L = normalizeLayout(poster.layout);
 
   useLayoutEffect(() => {
     const el = frameRef.current;
@@ -323,9 +366,24 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
   return (
     <div className="poster-card">
       <div className="pc-meta">
-        <span className="pc-label">
-          {String(index + 1).padStart(2, '0')} · {device.label} · {localeLabel(poster.locale)}
-        </span>
+        <span className="pc-index">{String(index + 1).padStart(2, '0')}</span>
+        <div className="pc-reorder">
+          <button
+            disabled={index === 0}
+            title={t(lang, 'shots.moveLeft')}
+            onClick={() => onMove(-1)}
+          >
+            ‹
+          </button>
+          <button
+            disabled={index === count - 1}
+            title={t(lang, 'shots.moveRight')}
+            onClick={() => onMove(1)}
+          >
+            ›
+          </button>
+        </div>
+        <div className="pc-grow" />
         <select value={poster.device} onChange={(e) => onPatch({ device: e.target.value })}>
           {DEVICE_LIST.map((d) => (
             <option key={d.id} value={d.id}>{d.label}</option>
@@ -356,6 +414,7 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
             device={poster.device}
             screenshot={poster.screenshot}
             icon={project.icon}
+            layout={L}
           />
         </div>
         {dragOver === 'frame' && (
@@ -420,6 +479,17 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
           </div>
         </div>
 
+        <button
+          className={'pc-layout-toggle' + (showLayout ? ' open' : '')}
+          onClick={() => setShowLayout((v) => !v)}
+        >
+          {showLayout ? '▾' : '▸'} {t(lang, 'shots.layout')}
+        </button>
+
+        {showLayout && (
+          <LayoutControls lang={lang} L={L} onLayout={onLayout} onApplyAll={onApplyAll} />
+        )}
+
         <div className="pc-actions">
           <button className="primary" onClick={onExport}>
             {t(lang, 'shots.exportPng')}
@@ -438,6 +508,138 @@ function PosterCard({ poster, index, project, palette, lang, onPatch, onCopy, on
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Seg({ value, options, onChange }) {
+  return (
+    <div className="pc-seg">
+      {options.map((o) => (
+        <button
+          key={o.v}
+          className={value === o.v ? 'on' : ''}
+          onClick={() => onChange(o.v)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Slider({ label, value, min, max, step, suffix, onChange, onReset }) {
+  return (
+    <div className="pc-slider">
+      <div className="pc-slider-head">
+        <span>{label}</span>
+        <button className="pc-slider-val" onClick={onReset} title="reset">
+          {value}
+          {suffix || ''}
+        </button>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </div>
+  );
+}
+
+function LayoutControls({ lang, L, onLayout, onApplyAll }) {
+  return (
+    <div className="pc-layout">
+      <div className="pc-field">
+        <label>{t(lang, 'shots.textPos')}</label>
+        <Seg
+          value={L.textPos}
+          onChange={(v) => onLayout({ textPos: v })}
+          options={[
+            { v: 'top', label: t(lang, 'shots.posTop') },
+            { v: 'bottom', label: t(lang, 'shots.posBottom') },
+            { v: 'none', label: t(lang, 'shots.posNone') },
+          ]}
+        />
+      </div>
+      <div className="pc-field">
+        <label>{t(lang, 'shots.bgStyle')}</label>
+        <Seg
+          value={L.bgStyle}
+          onChange={(v) => onLayout({ bgStyle: v })}
+          options={[
+            { v: 'solid', label: t(lang, 'shots.bgSolid') },
+            { v: 'gradient', label: t(lang, 'shots.bgGradient') },
+            { v: 'radial', label: t(lang, 'shots.bgRadial') },
+          ]}
+        />
+      </div>
+
+      <Slider
+        label={t(lang, 'shots.deviceScale')}
+        value={L.deviceScale}
+        min={0.6}
+        max={1.3}
+        step={0.02}
+        suffix="×"
+        onChange={(v) => onLayout({ deviceScale: v })}
+        onReset={() => onLayout({ deviceScale: 1 })}
+      />
+      <Slider
+        label={t(lang, 'shots.deviceOffset')}
+        value={L.deviceOffsetY}
+        min={-200}
+        max={400}
+        step={10}
+        onChange={(v) => onLayout({ deviceOffsetY: v })}
+        onReset={() => onLayout({ deviceOffsetY: 0 })}
+      />
+      <Slider
+        label={t(lang, 'shots.rotation')}
+        value={L.rotation}
+        min={-12}
+        max={12}
+        step={1}
+        suffix="°"
+        onChange={(v) => onLayout({ rotation: v })}
+        onReset={() => onLayout({ rotation: 0 })}
+      />
+      <Slider
+        label={t(lang, 'shots.fontScale')}
+        value={L.fontScale}
+        min={0.7}
+        max={1.4}
+        step={0.02}
+        suffix="×"
+        onChange={(v) => onLayout({ fontScale: v })}
+        onReset={() => onLayout({ fontScale: 1 })}
+      />
+
+      <div className="pc-toggles">
+        <label className="pc-check">
+          <input
+            type="checkbox"
+            checked={L.showDevice}
+            onChange={(e) => onLayout({ showDevice: e.target.checked })}
+          />
+          {t(lang, 'shots.showDevice')}
+        </label>
+        <label className="pc-check">
+          <input
+            type="checkbox"
+            checked={L.showFooter}
+            onChange={(e) => onLayout({ showFooter: e.target.checked })}
+          />
+          {t(lang, 'shots.showFooter')}
+        </label>
+      </div>
+
+      <button className="pc-apply-all" onClick={onApplyAll}>
+        {t(lang, 'shots.applyAll')}
+      </button>
     </div>
   );
 }

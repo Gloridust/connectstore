@@ -2,14 +2,22 @@
 
 > 纯前端的 App Store 资料工作台 — 给独立开发者管理多个 app 的上架文案、生成符合规范的截图海报。
 
-所有数据保存在浏览器 `localStorage`，不上传任何服务器。打开页面即可使用，关掉浏览器数据也在。
+所有数据保存在浏览器 `localStorage`，不上传任何服务器，没有账号、没有后端、没有追踪。打开网页即用，关掉浏览器数据仍在；想换设备就「备份」成一个 JSON 文件再「恢复」。
+
+> [!TIP]
+> 第一次打开点 **载入示例项目**，30 秒看到一整套带配色、版式、文案的截图海报长什么样。
+
+## 为什么做这个
+
+上架 App Store 时最磨人的两件事：① 把标题/副标题/关键词/描述按 Apple 的字数限制、按每种语言抄来抄去；② 用 Figma/PS 拼一套规格正确、风格统一的截图海报。市面工具要么要登录上传、要么按月收费、要么导出带水印。ConnectStore 把这两件事放进一个**纯本地、开箱即用、可自由自定义**的网页里。
 
 ## 功能
 
 ### 多项目管理
 - 左侧栏列出所有项目，点击切换
-- 每个项目有独立的颜色标识（关键色）
-- 支持新建、重命名、删除（需确认）
+- 每个项目有独立标识：上传了 App 图标就显示图标，否则显示强调色方块
+- 新建、重命名、**一键复制整个项目**、删除（需确认）
+- **备份 / 恢复**：把全部数据导出成 JSON 文件，换机或回滚时一键导入（合并或替换）
 
 ### 上架资料编辑器
 - 内置 9 个 App Store Connect 标准字段（应用名、副标题、推广文本、描述、关键词、版本新增内容、3 个 URL）
@@ -20,25 +28,34 @@
 - 支持新增 locale（12 个 App Store 常用语言预设，也可自定义编码）
 - 一键导出整个项目的字段配置 + 数据为 JSON
 
-### 截图海报生成器
-**配色**：
-- 选一个**关键色**，自动派生 9 色配色方案（米色背景 / 卡片色 / 主墨色 / 辅墨色 / 4 级文字灰 / 互补强调色）
-- 7 个内置预设色（蓝、绿、红、琥珀、紫、青、黑），点击切换
-- 配色色卡实时预览
+### App 图标
+- 项目级上传 1024×1024 App 图标（点击或拖拽），用作侧栏标识 + 海报底部品牌徽标
 
-**海报**：
-- 一个项目可创建任意数量海报，每张可独立设置：
-  - **设备**：iPhone 6.9″ / 6.7″ / 6.5″ / 5.5″、iPad 13″ / iPad Pro 12.9″（输出尺寸严格按 Apple [App Store screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications)）
-  - **文案语言**：从项目的 locales 中选
-  - **副标题（eyebrow）/ 主标题（headline，支持 `<em>...</em>` 斜体强调）/ 描述（body）**
-  - **真机截图上传**：本地上传后填进设备外壳，按设备屏幕比例裁切
-- 底部品牌水印按 locale 显示对应语言的应用名（带可选斜体后缀）
-- 卡片预览实时缩放，所见即所得
+### 截图海报生成器
+**双色配色系统**：
+- **背景色** 决定海报底色 / 卡片色（任选颜色都会被收敛到可读的高亮度，文字不会糊）
+- **强调色** 决定主标题强调字、品牌徽标，并为正文灰度注入同一色温
+- 各 7 个预设 + 取色器 + hex 输入，派生出的 10 色方案实时预览
+
+**每张海报独立自定义参数**（核心）：
+- **文字位置**：顶部 / 底部 / 隐藏（纯设备图）
+- **背景样式**：纯色 / 渐变 / 光晕
+- **设备缩放**（0.6–1.3×）、**上下偏移**、**旋转**（±12°，做斜放风格）、**字号缩放**（0.7–1.4×）
+- **显示/隐藏设备外壳**、**显示/隐藏底部水印**
+- 调好一张后「**应用此版式到全部海报**」，整组瞬间统一
+- 新建海报自动继承上一张的版式与设备，保证一套截图风格一致
+
+**设备与内容**：
+- **设备**：iPhone 6.9″ / 6.7″ / 6.5″ / 5.5″、iPad 13″ / iPad Pro 12.9″，输出尺寸严格按 Apple [App Store screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications)；设备外壳按机型还原灵动岛 / 刘海 / Home 键
+- **文案语言**：从项目的 locales 中选
+- **副标题 / 主标题（支持 `<em>...</em>` 斜体强调）/ 描述**，全部所见即所得实时预览
+- **真机截图上传**：点击或拖拽（编辑区与海报区都能拖），按设备屏幕比例裁切
+- **拖拽重排**海报顺序、复制、删除
 
 **导出**：
-- 单张「导出 PNG」按钮：按设备的原生像素尺寸导出（如 1290×2796）
+- 单张「导出 PNG」：按设备原生像素尺寸导出（如 1290×2796）
 - 「导出全部 (ZIP)」：批量打包整个项目所有海报
-- 文件名包含项目名、海报 id、locale、像素尺寸，便于上传 App Store Connect
+- 文件名含项目名、海报 id、locale、像素尺寸，便于上传 App Store Connect
 
 ### 国际化
 - 工具自身界面支持中 / 英切换（不影响用户编辑的项目数据）
@@ -51,20 +68,21 @@
 - **JSZip** 批量打包
 - 状态管理：原生 `useSyncExternalStore` + `localStorage`，无 Redux / Zustand
 - 字体：Google Fonts 的 Fraunces（衬线）+ Inter（无衬线）
-- 配色生成器：HSL 色彩空间，从单色派生整套调色板（[colors.js](src/utils/colors.js)）
+- 配色生成器：HSL 色彩空间，从背景色 + 强调色派生整套调色板（[colors.js](src/utils/colors.js)）
+- **Vitest** 单元测试覆盖配色、设备规格、字段、版式、存储逻辑（40 个用例）
 
 ## 启动
 
 ```bash
 npm install
-npm run dev
+npm run dev          # 开发服务器 http://localhost:5173
 ```
 
-打开 http://localhost:5173 即可。
-
 ```bash
-npm run build       # 产出静态文件到 dist/
-npm run preview     # 本地预览构建结果
+npm run build        # 产出静态文件到 dist/
+npm run preview      # 本地预览构建结果
+npm test             # 跑单元测试
+npm run lint         # ESLint
 ```
 
 构建后的 `dist/` 是纯静态资源，可以直接部署到 GitHub Pages、Cloudflare Pages、Vercel、Netlify 等。
@@ -91,7 +109,8 @@ npm run preview     # 本地预览构建结果
         "name": { "en-US": "...", "zh-Hans": "..." },
         "subtitle": { "en-US": "...", "zh-Hans": "..." }
       },
-      "theme": { "keyColor": "#1a2f66" },
+      "icon": { "dataUrl": "data:image/png;base64,...", "name": "icon.png" },
+      "theme": { "bgColor": "#f4ecd8", "accentColor": "#1a2f66" },
       "appName": {
         "en-US": { "main": "Yueji", "accent": "Pro" }
       },
@@ -101,7 +120,13 @@ npm run preview     # 本地预览构建结果
           "device": "iphone-6.9",
           "locale": "zh-Hans",
           "copy": { "eyebrow": "...", "headline": "...", "body": "..." },
-          "screenshot": { "dataUrl": "data:image/png;base64,...", "name": "1.png" }
+          "screenshot": { "dataUrl": "data:image/png;base64,...", "name": "1.png" },
+          "layout": {
+            "textPos": "top",        // top | bottom | none
+            "bgStyle": "gradient",   // solid | gradient | radial
+            "deviceScale": 1, "deviceOffsetY": 0, "rotation": 0, "fontScale": 1,
+            "showDevice": true, "showFooter": true
+          }
         }
       ]
     }
@@ -109,7 +134,9 @@ npm run preview     # 本地预览构建结果
 }
 ```
 
-> ⚠️ 真机截图以 base64 存在 `localStorage` 里。浏览器的 `localStorage` 配额通常是 5–10 MB，存太多大图会爆。如有更大需求可换 IndexedDB（未来工作）。
+> 旧数据自动迁移：`theme.keyColor` 会被当作 `accentColor`，缺失的 `layout` 字段回落到默认值。
+
+> ⚠️ 真机截图与 App 图标以 base64 存在 `localStorage`。浏览器配额通常 5–10 MB，存太多大图会满 —— 这正是「备份」按钮存在的原因。更大需求可换 IndexedDB（见 Roadmap）。
 
 ## 设备规格速查
 
@@ -127,32 +154,36 @@ npm run preview     # 本地预览构建结果
 
 ```
 src/
-├── App.jsx                       # 顶层布局
+├── App.jsx                       # 顶层布局 + 空状态
 ├── main.jsx
 ├── index.css
 ├── i18n.js                       # UI 自身的中英文文案
 ├── state/
-│   ├── storage.js                # localStorage 读写、项目 CRUD
+│   ├── storage.js                # localStorage 读写、项目 CRUD、备份/恢复、示例项目
+│   ├── storage.test.js
 │   └── useStore.js               # React 订阅 hook
 ├── utils/
-│   ├── devices.js                # Apple 设备规格表
-│   ├── colors.js                 # 关键色 → 调色板
-│   └── fields.js                 # 默认字段 + locale 列表
+│   ├── devices.js                # Apple 设备规格表          (+ .test.js)
+│   ├── colors.js                 # 双色 → 调色板 / 背景      (+ .test.js)
+│   ├── fields.js                 # 默认字段 + locale 列表    (+ .test.js)
+│   └── layout.js                 # 海报版式模型              (+ layout.test.js)
 └── components/
-    ├── Sidebar.jsx               # 项目列表 + 创建/删除/UI 语言
+    ├── Sidebar.jsx               # 项目列表 + 备份/恢复 + UI 语言
     ├── MetadataTab.jsx           # 上架资料编辑器
-    ├── ScreenshotsTab.jsx        # 截图海报生成器（含 PNG/ZIP 导出）
+    ├── IconUpload.jsx            # App 图标上传
+    ├── ScreenshotsTab.jsx        # 截图海报生成器（配色/版式/PNG/ZIP）
     └── Poster.jsx                # 单张海报的原生尺寸渲染
 ```
 
 ## 后续可做（Roadmap）
 
-- [ ] 海报模板预设（不同的排版风格）
-- [ ] 拖拽排序海报与字段
+- [ ] 海报模板预设（一键套用排版风格）
 - [ ] IndexedDB 存储以容纳更多大图
-- [ ] 导出/导入项目 JSON 备份文件
 - [ ] App Icon 生成（1024×1024 + 各尺寸切图）
 - [ ] 直接对接 App Store Connect API 上传
+- [x] ~~导出/导入项目 JSON 备份文件~~
+- [x] ~~海报排版风格自定义（文字位置/背景/缩放/旋转）~~
+- [x] ~~重排海报顺序~~
 
 ## License
 
