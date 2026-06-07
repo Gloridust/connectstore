@@ -868,14 +868,41 @@ select {
 .poster-card .pc-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--paper);
 }
-.poster-card .pc-meta .pc-label {
+.poster-card .pc-meta .pc-index {
   font-family: var(--serif);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted-2);
+}
+.poster-card .pc-meta .pc-grow {
   flex: 1;
+}
+.poster-card .pc-reorder {
+  display: flex;
+  gap: 2px;
+}
+.poster-card .pc-reorder button {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid var(--shell-line);
+  background: var(--shell-2);
+  color: var(--muted-2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.poster-card .pc-reorder button:hover:not(:disabled) {
+  color: var(--paper);
+  border-color: var(--accent-2);
+}
+.poster-card .pc-reorder button:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .poster-card .pc-meta select {
   background: var(--shell-3);
@@ -1018,6 +1045,241 @@ select {
   color: var(--muted);
   margin-top: 4px;
   letter-spacing: 0.04em;
+}
+
+/* ---- Layout controls (per-poster customization) ---- */
+.poster-card .pc-layout-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--muted-2);
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.poster-card .pc-layout-toggle:hover {
+  color: var(--paper);
+}
+.poster-card .pc-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--shell-2);
+  border: 1px solid var(--shell-line);
+}
+.poster-card .pc-field label {
+  margin-bottom: 6px;
+}
+.poster-card .pc-seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--shell);
+  border-radius: 999px;
+}
+.poster-card .pc-seg button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted-2);
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.poster-card .pc-seg button.on {
+  background: var(--paper);
+  color: var(--shell);
+}
+.poster-card .pc-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.poster-card .pc-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.poster-card .pc-slider-val {
+  background: var(--shell);
+  border: 1px solid var(--shell-line);
+  color: var(--muted-2);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 1px 8px;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.poster-card .pc-slider-val:hover {
+  color: var(--paper);
+  border-color: var(--accent-2);
+}
+.poster-card .pc-slider input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent-2);
+  cursor: pointer;
+}
+.poster-card .pc-toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.poster-card .pc-check {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--muted-2) !important;
+  cursor: pointer;
+  margin: 0 !important;
+}
+.poster-card .pc-check input {
+  accent-color: var(--accent-2);
+  cursor: pointer;
+}
+.poster-card .pc-apply-all {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--paper);
+  border-radius: 999px;
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.poster-card .pc-apply-all:hover {
+  background: var(--accent-2);
+}
+
+/* ---- Sidebar tools (backup / restore) + row actions ---- */
+.sidebar-tools {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--shell-line);
+}
+.sidebar-tools button {
+  flex: 1;
+  background: var(--shell-2);
+  border: 1px solid var(--shell-line);
+  color: var(--muted-2);
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sidebar-tools button:hover {
+  color: var(--paper);
+  border-color: var(--accent-2);
+}
+.project-row .row-act {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  opacity: 0;
+}
+.project-row:hover .row-act {
+  opacity: 1;
+}
+.project-row .row-act:hover {
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.2);
+}
+.project-row .row-act.del:hover {
+  color: var(--danger);
+}
+
+/* empty-state actions */
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.empty-actions .ghost {
+  background: transparent;
+  border: 1px solid #d8cfb8;
+  color: #5a5040;
+}
+.empty-actions .ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* boot splash (while IndexedDB hydrates) */
+.boot {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--shell);
+}
+.boot-mark {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: -0.01em;
+}
+.boot-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--shell-line);
+  border-top-color: var(--muted-2);
+  animation: boot-spin 0.7s linear infinite;
+}
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* storage usage indicator in the sidebar */
+.sidebar-usage {
+  padding: 8px 14px 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-usage .bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--shell-2);
+  overflow: hidden;
+}
+.sidebar-usage .bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
 }
 
 /* hidden export stage */

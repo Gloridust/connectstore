@@ -15,11 +15,11 @@ export default function MetadataTab({ project, lang }) {
     return () => clearTimeout(t);
   }, [copied]);
 
-  const hidden = project.hiddenDefaults || [];
   const fields = useMemo(
-    () => mergeFields(project.fields || [], hidden),
-    [project.fields, hidden],
+    () => mergeFields(project.fields || [], project.hiddenDefaults || []),
+    [project.fields, project.hiddenDefaults],
   );
+  const hidden = project.hiddenDefaults || [];
   const hiddenFields = DEFAULT_FIELDS.filter((f) => hidden.includes(f.id));
 
   const setValue = (fieldId, locale, val) => {

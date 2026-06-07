@@ -1,5 +1,6 @@
-import { paletteToCssVars } from '../utils/colors';
+import { paletteToCssVars, backgroundFor } from '../utils/colors';
 import { getDevice } from '../utils/devices';
+import { normalizeLayout } from '../utils/layout';
 
 // Renders a single poster at NATIVE pixel size.
 // The caller is responsible for scaling it down for preview via CSS transform.
@@ -11,55 +12,47 @@ import { getDevice } from '../utils/devices';
 //   appName      — { main, accent }
 //   device       — device id (e.g. 'iphone-6.9')
 //   screenshot   — { dataUrl, name } | null
+//   icon         — { dataUrl } | null (project app icon)
+//   layout       — see DEFAULT_LAYOUT
 //
 // We embed the palette as inline CSS vars on a wrapper so html-to-image picks
 // it up even when the node is cloned to the offscreen export stage.
 
-export default function Poster({ id, palette, copy, appName, device, screenshot, icon }) {
+export default function Poster({ id, palette, copy, appName, device, screenshot, icon, layout }) {
   const d = getDevice(device);
   const isPad = device.startsWith('ipad');
   const cssVars = paletteToCssVars(palette);
+  const L = normalizeLayout(layout);
 
   const W = d.posterW;
   const H = d.posterH;
+  const fs = L.fontScale;
 
-  // Top headline area
+  // Headline sizing (scaled by fontScale)
   const headlinePad = isPad ? 200 : 110;
-  const headlineTop = isPad ? 180 : 180;
-  const headlineFs = isPad ? 148 : 116;
-  const eyebrowFs = isPad ? 42 : 38;
-  const bodyFs = isPad ? 40 : 36;
+  const headlineTop = isPad ? 180 : 160;
+  const headlineFs = (isPad ? 148 : 116) * fs;
+  const eyebrowFs = (isPad ? 42 : 38) * fs;
+  const bodyFs = (isPad ? 40 : 36) * fs;
 
   // Footer reserves space at the bottom of the poster.
-  const footerH = 220;
+  const footerH = L.showFooter ? 220 : 60;
 
-  return (
+  const headline = (
     <div
-      data-poster-id={id}
-      className={'poster-native' + (isPad ? ' is-pad' : '')}
       style={{
-        ...cssVars,
-        width: W + 'px',
-        height: H + 'px',
-        background: 'var(--cs-cream)',
-        position: 'relative',
-        overflow: 'hidden',
-        fontFamily: 'var(--serif), Georgia, serif',
-        display: 'flex',
-        flexDirection: 'column',
+        width: '100%',
+        padding:
+          L.textPos === 'bottom'
+            ? `0 ${headlinePad}px ${footerH}px`
+            : `${headlineTop}px ${headlinePad}px 0`,
+        textAlign: 'center',
+        color: 'var(--cs-char)',
+        boxSizing: 'border-box',
+        flex: '0 0 auto',
       }}
     >
-      {/* Headline */}
-      <div
-        style={{
-          width: '100%',
-          padding: `${headlineTop}px ${headlinePad}px 0`,
-          textAlign: 'center',
-          color: 'var(--cs-char)',
-          boxSizing: 'border-box',
-          flex: '0 0 auto',
-        }}
-      >
+      {copy.eyebrow ? (
         <div
           style={{
             fontFamily: 'Fraunces, Georgia, serif',
@@ -67,27 +60,29 @@ export default function Poster({ id, palette, copy, appName, device, screenshot,
             fontSize: eyebrowFs + 'px',
             color: 'var(--cs-ink2)',
             letterSpacing: '0.02em',
-            marginBottom: 24,
+            marginBottom: 24 * fs,
             fontWeight: 400,
           }}
         >
-          {copy.eyebrow || ''}
+          {copy.eyebrow}
         </div>
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: 'Fraunces, Georgia, serif',
-            fontWeight: 700,
-            fontSize: headlineFs + 'px',
-            lineHeight: 1.08,
-            letterSpacing: '-0.03em',
-            color: 'var(--cs-char)',
-          }}
-          dangerouslySetInnerHTML={{ __html: renderHeadline(copy.headline) }}
-        />
+      ) : null}
+      <h2
+        style={{
+          margin: 0,
+          fontFamily: 'Fraunces, Georgia, serif',
+          fontWeight: 700,
+          fontSize: headlineFs + 'px',
+          lineHeight: 1.08,
+          letterSpacing: '-0.03em',
+          color: 'var(--cs-char)',
+        }}
+        dangerouslySetInnerHTML={{ __html: renderHeadline(copy.headline) }}
+      />
+      {copy.body ? (
         <p
           style={{
-            margin: `${isPad ? 64 : 56}px auto 0`,
+            margin: `${(isPad ? 64 : 56) * fs}px auto 0`,
             maxWidth: isPad ? 1300 : 880,
             fontFamily: 'Fraunces, Georgia, serif',
             fontStyle: 'italic',
@@ -97,90 +92,132 @@ export default function Poster({ id, palette, copy, appName, device, screenshot,
             fontWeight: 400,
           }}
         >
-          {copy.body || ''}
+          {copy.body}
         </p>
-      </div>
+      ) : null}
+    </div>
+  );
 
-      {/* Stage — flex:1, phone aligned to bottom, kept clear of footer */}
-      <div
-        style={{
-          flex: '1 1 auto',
-          width: '100%',
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          padding: `40px ${isPad ? 200 : 80}px ${footerH}px`,
-          boxSizing: 'border-box',
-          minHeight: 0,
-        }}
-      >
-        <PhoneFrame device={d} screenshot={screenshot} />
-      </div>
+  // Stage alignment depends on where the text sits.
+  const stageAlign =
+    L.textPos === 'top' ? 'flex-end' : L.textPos === 'bottom' ? 'flex-start' : 'center';
+  // The element adjacent to the footer needs the footer clearance; when the
+  // headline is at the bottom it already carries that padding.
+  const stageBottomPad = L.textPos === 'bottom' ? 40 : footerH;
+
+  const stage = (
+    <div
+      style={{
+        flex: '1 1 auto',
+        width: '100%',
+        display: 'flex',
+        alignItems: stageAlign,
+        justifyContent: 'center',
+        padding: `40px ${isPad ? 200 : 80}px ${stageBottomPad}px`,
+        boxSizing: 'border-box',
+        minHeight: 0,
+      }}
+    >
+      {L.showDevice ? (
+        <div
+          style={{
+            transform: `translateY(${L.deviceOffsetY}px) rotate(${L.rotation}deg) scale(${L.deviceScale})`,
+            transformOrigin: 'center center',
+            display: 'flex',
+          }}
+        >
+          <PhoneFrame device={d} screenshot={screenshot} />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div
+      data-poster-id={id}
+      className={'poster-native' + (isPad ? ' is-pad' : '')}
+      style={{
+        ...cssVars,
+        width: W + 'px',
+        height: H + 'px',
+        background: backgroundFor(palette, L.bgStyle),
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: 'var(--serif), Georgia, serif',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {L.textPos === 'top' && headline}
+      {stage}
+      {L.textPos === 'bottom' && headline}
 
       {/* Footer mark */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 80,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
+      {L.showFooter && (
         <div
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: 14,
-            background: 'var(--cs-ink)',
+            position: 'absolute',
+            bottom: 80,
+            left: '50%',
+            transform: 'translateX(-50%)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            // soft shadow + inner highlight to feel like the iOS app icon mask
-            boxShadow:
-              '0 4px 12px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.12)',
+            gap: 16,
           }}
         >
-          {icon?.dataUrl ? (
-            <img
-              src={icon.dataUrl}
-              alt=""
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-              }}
-              crossOrigin="anonymous"
-            />
-          ) : (
-            <svg width="34" height="34" viewBox="0 0 16 16" fill="none">
-              <path d="M5 2 L11 2 Q12 2 12 3 L12 14 L8 11.5 L4 14 L4 3 Q4 2 5 2 Z" fill="var(--cs-card)" />
-            </svg>
-          )}
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 14,
+              background: 'var(--cs-ink)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              // soft shadow + inner highlight to feel like the iOS app icon mask
+              boxShadow:
+                '0 4px 12px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.12)',
+            }}
+          >
+            {icon?.dataUrl ? (
+              <img
+                src={icon.dataUrl}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+                crossOrigin="anonymous"
+              />
+            ) : (
+              <svg width="34" height="34" viewBox="0 0 16 16" fill="none">
+                <path d="M5 2 L11 2 Q12 2 12 3 L12 14 L8 11.5 L4 14 L4 3 Q4 2 5 2 Z" fill="var(--cs-card)" />
+              </svg>
+            )}
+          </div>
+          <div
+            style={{
+              fontFamily: 'Fraunces, Georgia, serif',
+              fontSize: 28,
+              fontWeight: 700,
+              color: 'var(--cs-char)',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {appName?.main || ''}
+            {appName?.accent ? (
+              <em
+                style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--cs-ink2)', marginLeft: 8 }}
+              >
+                {appName.accent}
+              </em>
+            ) : null}
+          </div>
         </div>
-        <div
-          style={{
-            fontFamily: 'Fraunces, Georgia, serif',
-            fontSize: 28,
-            fontWeight: 700,
-            color: 'var(--cs-char)',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {appName?.main || ''}
-          {appName?.accent ? (
-            <em
-              style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--cs-ink2)', marginLeft: 8 }}
-            >
-              {appName.accent}
-            </em>
-          ) : null}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -55,9 +55,7 @@ export function hslToRgb({ h, s, l }) {
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l - c / 2;
-  let r1 = 0;
-  let g1 = 0;
-  let b1 = 0;
+  let r1, g1, b1;
   if (h < 60) [r1, g1, b1] = [c, x, 0];
   else if (h < 120) [r1, g1, b1] = [x, c, 0];
   else if (h < 180) [r1, g1, b1] = [0, c, x];
@@ -142,6 +140,10 @@ export function buildPalette(bgHex, accentHex) {
   const rougeHue = (ah + 200) % 360;
   const rouge = hslToHex({ h: rougeHue, s: 0.55, l: 0.5 });
 
+  // Soft accent "wash" — a light tint of the accent hue, used as the top stop
+  // of a gradient background so the headline sits in a subtle accent glow.
+  const wash = hslToHex({ h: ah, s: clamp(aS * 0.4, 0.1, 0.22), l: 0.93 });
+
   return {
     bg: bgHex,
     accent: accentHex,
@@ -154,7 +156,24 @@ export function buildPalette(bgHex, accentHex) {
     char3,
     char4,
     rouge,
+    wash,
   };
+}
+
+// CSS background value for a poster, given the palette and a style.
+//   'solid'    -> flat cream
+//   'gradient' -> soft accent wash fading into cream
+//   'radial'   -> accent glow behind the headline area
+export function backgroundFor(palette, style) {
+  switch (style) {
+    case 'gradient':
+      return `linear-gradient(180deg, ${palette.wash} 0%, ${palette.cream} 62%)`;
+    case 'radial':
+      return `radial-gradient(120% 70% at 50% 0%, ${palette.wash} 0%, ${palette.cream} 60%)`;
+    case 'solid':
+    default:
+      return palette.cream;
+  }
 }
 
 export function paletteToCssVars(p) {
@@ -168,5 +187,6 @@ export function paletteToCssVars(p) {
     '--cs-char3': p.char3,
     '--cs-char4': p.char4,
     '--cs-rouge': p.rouge,
+    '--cs-wash': p.wash,
   };
 }

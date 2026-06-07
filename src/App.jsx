@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import MetadataTab from './components/MetadataTab';
 import ScreenshotsTab from './components/ScreenshotsTab';
 import { useStore, useCurrentProject } from './state/useStore';
-import { renameProject, createProject } from './state/storage';
+import { renameProject, createProject, createSampleProject } from './state/storage';
 import { t } from './i18n';
 
 export default function App() {
@@ -12,6 +12,17 @@ export default function App() {
   const lang = s.uiLang;
   const [tab, setTab] = useState('screenshots');
   const [showNew, setShowNew] = useState(false);
+
+  // Wait for IndexedDB to hydrate before first paint so we don't flash an
+  // empty "no projects" state over data that is about to load.
+  if (!s._hydrated) {
+    return (
+      <div className="boot">
+        <div className="boot-mark">ConnectStore</div>
+        <div className="boot-spinner" />
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -55,9 +66,14 @@ export default function App() {
             <h2>{t(lang, 'app.title')}</h2>
             <p>{t(lang, 'app.subtitle')}</p>
             <p style={{ opacity: 0.8 }}>{t(lang, 'sidebar.empty')}</p>
-            <button onClick={() => setShowNew(true)}>
-              + {t(lang, 'sidebar.newProject')}
-            </button>
+            <div className="empty-actions">
+              <button className="primary" onClick={() => setShowNew(true)}>
+                + {t(lang, 'sidebar.newProject')}
+              </button>
+              <button className="ghost" onClick={() => createSampleProject()}>
+                {t(lang, 'sidebar.loadSample')}
+              </button>
+            </div>
           </div>
         )}
       </main>
