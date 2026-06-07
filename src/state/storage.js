@@ -1,4 +1,11 @@
-// LocalStorage-backed store for ConnectStore.
+// Store for ConnectStore.
+//
+// Source of truth is a synchronous in-memory tree (so React + tests stay
+// simple). Persistence is IndexedDB — its quota is typically hundreds of MB
+// to GBs, vs localStorage's ~5–10 MB, which matters because screenshots and
+// app icons are stored inline as base64. When IndexedDB is unavailable
+// (old browsers, jsdom in tests) we transparently fall back to localStorage.
+//
 // Schema:
 // {
 //   version: 1,
@@ -13,15 +20,16 @@
 //   locales: ['en-US', 'zh-Hans', ...],
 //   fields: [{ id, label: { [lang]: string }, type, max?, custom?: bool }],
 //   values: { [fieldId]: { [locale]: string } },
-//   theme: { keyColor: '#1a2f66' },
+//   icon: { dataUrl, name } | null,
+//   theme: { bgColor, accentColor },
 //   appName: { [locale]: { main, accent } },
-//   posters: [{
-//     id, device, locale, copy: { eyebrow, headline, body },
-//     screenshot: { dataUrl, name } | null
-//   }]
+//   posters: [{ id, device, locale, copy, screenshot, layout }]
 // }
 
+import { hasIndexedDB, idbGet, idbSet } from './idb';
+
 const KEY = 'connectstore.v1';
+const IDB_KEY = 'state';
 
 const EMPTY = {
   version: 1,
@@ -31,27 +39,113 @@ const EMPTY = {
 };
 
 let cache = null;
+let hydrated = false;
 const listeners = new Set();
+
+// `_hydrated` rides along on the snapshot so the UI can show a boot splash
+// until IndexedDB has loaded, but it is stripped before persisting.
+function withMeta(state) {
+  return { ...state, _hydrated: hydrated };
+}
+
+function persistShape(state) {
+  const clone = JSON.parse(JSON.stringify(state));
+  delete clone._hydrated;
+  return clone;
+}
 
 function read() {
   if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    cache = raw ? { ...EMPTY, ...JSON.parse(raw) } : { ...EMPTY };
-  } catch {
-    cache = { ...EMPTY };
+  if (hasIndexedDB) {
+    // Real persistence arrives asynchronously via hydrate(); until then the
+    // UI renders a splash gated on `_hydrated`.
+    cache = withMeta({ ...EMPTY });
+  } else {
+    // Synchronous localStorage fallback (also the path used by unit tests).
+    try {
+      const raw = localStorage.getItem(KEY);
+      cache = raw ? { ...EMPTY, ...JSON.parse(raw) } : { ...EMPTY };
+    } catch {
+      cache = { ...EMPTY };
+    }
+    hydrated = true;
+    cache._hydrated = true;
   }
   return cache;
 }
 
-function write(next) {
-  cache = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch (err) {
-    console.error('[connectstore] failed to persist:', err);
+let persistTimer = null;
+
+function schedulePersist() {
+  if (!hasIndexedDB) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(persistShape(cache)));
+    } catch (err) {
+      console.error('[connectstore] localStorage persist failed:', err);
+    }
+    return;
   }
-  for (const fn of listeners) fn(next);
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(flush, 250);
+}
+
+export async function flush() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (!hasIndexedDB || !cache) return;
+  try {
+    await idbSet(IDB_KEY, persistShape(cache));
+  } catch (err) {
+    console.error('[connectstore] IndexedDB persist failed:', err);
+  }
+}
+
+function notify() {
+  for (const fn of listeners) fn(cache);
+}
+
+function write(next) {
+  cache = withMeta(next);
+  schedulePersist();
+  notify();
+}
+
+// Load persisted state from IndexedDB, migrating any legacy localStorage data
+// on first run. Safe to call once at module load.
+export async function hydrate() {
+  if (!hasIndexedDB) {
+    read();
+    return;
+  }
+  let stored = null;
+  try {
+    stored = await idbGet(IDB_KEY);
+    if (!stored) {
+      // One-time migration from the old localStorage-backed store.
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          stored = JSON.parse(raw);
+          await idbSet(IDB_KEY, persistShape(stored));
+          localStorage.removeItem(KEY);
+          console.info('[connectstore] migrated localStorage data to IndexedDB');
+        }
+      } catch (err) {
+        console.error('[connectstore] migration failed:', err);
+      }
+    }
+  } catch (err) {
+    console.error('[connectstore] IndexedDB hydrate failed:', err);
+  }
+  hydrated = true;
+  cache = withMeta({ ...EMPTY, ...(stored || {}) });
+  notify();
+}
+
+export function isHydrated() {
+  return hydrated;
 }
 
 export function getState() {
@@ -66,6 +160,7 @@ export function subscribe(fn) {
 export function update(mutator) {
   const prev = read();
   const draft = JSON.parse(JSON.stringify(prev));
+  delete draft._hydrated;
   const out = mutator(draft);
   write(out || draft);
 }
@@ -174,7 +269,7 @@ export function duplicateProjectById(id) {
 // ---- Backup / restore (whole-store JSON) ----
 
 export function serializeState() {
-  return JSON.stringify(read(), null, 2);
+  return JSON.stringify(persistShape(read()), null, 2);
 }
 
 // Import a previously exported state. mode 'replace' overwrites everything;
@@ -265,4 +360,18 @@ export function createSampleProject() {
     s.currentProjectId = p.id;
   });
   return p.id;
+}
+
+// ---- Boot ----
+// Hydrate from IndexedDB once at startup, and flush pending (debounced) writes
+// before the page goes away so the last edits aren't lost.
+if (hasIndexedDB) {
+  hydrate();
+  if (typeof window !== 'undefined') {
+    const onLeave = () => flush();
+    window.addEventListener('pagehide', onLeave);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') onLeave();
+    });
+  }
 }

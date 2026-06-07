@@ -13,6 +13,17 @@ export default function App() {
   const [tab, setTab] = useState('screenshots');
   const [showNew, setShowNew] = useState(false);
 
+  // Wait for IndexedDB to hydrate before first paint so we don't flash an
+  // empty "no projects" state over data that is about to load.
+  if (!s._hydrated) {
+    return (
+      <div className="boot">
+        <div className="boot-mark">ConnectStore</div>
+        <div className="boot-spinner" />
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <Sidebar />

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import {
   createProject,
@@ -9,7 +9,15 @@ import {
   serializeState,
   importState,
 } from '../state/storage';
+import { storageEstimate } from '../state/idb';
 import { t, UI_LANGS } from '../i18n';
+
+function formatBytes(n) {
+  if (n == null) return '—';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
 
 function downloadText(text, filename, type = 'application/json') {
   const blob = new Blob([text], { type });
@@ -31,6 +39,27 @@ export default function Sidebar() {
   // Sort by createdAt to keep ordering stable while users type into project name.
   const projects = Object.values(s.projects).sort((a, b) => a.createdAt - b.createdAt);
   const lang = s.uiLang;
+
+  // Refresh the storage estimate when the data structurally changes (a project
+  // or poster added/removed), not on every keystroke.
+  const [usage, setUsage] = useState(null);
+  const sizeSignal = useMemo(
+    () =>
+      Object.values(s.projects).reduce(
+        (n, p) => n + 1 + (p.posters?.length || 0) + (p.icon ? 1 : 0),
+        0,
+      ),
+    [s.projects],
+  );
+  useEffect(() => {
+    let alive = true;
+    storageEstimate().then((est) => {
+      if (alive && est) setUsage(est);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sizeSignal]);
 
   const onBackup = () => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -119,6 +148,22 @@ export default function Sidebar() {
           ))
         )}
       </div>
+
+      {usage && (
+        <div className="sidebar-usage" title={t(lang, 'sidebar.storage')}>
+          <span>{formatBytes(usage.usage)}</span>
+          {usage.quota ? (
+            <div className="bar">
+              <span
+                style={{
+                  width:
+                    Math.min(100, (usage.usage / usage.quota) * 100).toFixed(1) + '%',
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      )}
 
       <div className="sidebar-tools">
         <button onClick={onBackup} title={t(lang, 'sidebar.backupTitle')}>

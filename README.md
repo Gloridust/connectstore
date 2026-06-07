@@ -2,7 +2,7 @@
 
 > 纯前端的 App Store 资料工作台 — 给独立开发者管理多个 app 的上架文案、生成符合规范的截图海报。
 
-所有数据保存在浏览器 `localStorage`，不上传任何服务器，没有账号、没有后端、没有追踪。打开网页即用，关掉浏览器数据仍在；想换设备就「备份」成一个 JSON 文件再「恢复」。
+所有数据保存在浏览器本地（**IndexedDB**，配额通常数百 MB 起，足够放下大量真机截图与图标），不上传任何服务器，没有账号、没有后端、没有追踪。打开网页即用，关掉浏览器数据仍在；想换设备就「备份」成一个 JSON 文件再「恢复」。
 
 > [!TIP]
 > 第一次打开点 **载入示例项目**，30 秒看到一整套带配色、版式、文案的截图海报长什么样。
@@ -66,7 +66,7 @@
 - **Vite 8** + **React 19**（无 TypeScript，纯 JSX）
 - **html-to-image** 把海报 DOM 渲染为 PNG
 - **JSZip** 批量打包
-- 状态管理：原生 `useSyncExternalStore` + `localStorage`，无 Redux / Zustand
+- 状态管理：原生 `useSyncExternalStore`（同步内存树）+ **IndexedDB** 持久化（localStorage 兜底），无 Redux / Zustand
 - 字体：Google Fonts 的 Fraunces（衬线）+ Inter（无衬线）
 - 配色生成器：HSL 色彩空间，从背景色 + 强调色派生整套调色板（[colors.js](src/utils/colors.js)）
 - **Vitest** 单元测试覆盖配色、设备规格、字段、版式、存储逻辑（40 个用例）
@@ -89,7 +89,7 @@ npm run lint         # ESLint
 
 ## 数据存储
 
-所有数据保存在 `localStorage`，键名 `connectstore.v1`，结构形如：
+数据保存在 **IndexedDB**（数据库 `connectstore` → object store `kv` → 键 `state`）。内存里维持一份同步状态树，写入时防抖（250ms）异步落盘，离开页面前 flush，避免丢失最后的编辑。结构形如：
 
 ```jsonc
 {
@@ -134,9 +134,9 @@ npm run lint         # ESLint
 }
 ```
 
-> 旧数据自动迁移：`theme.keyColor` 会被当作 `accentColor`，缺失的 `layout` 字段回落到默认值。
+> 自动迁移：① 旧版若有 `localStorage['connectstore.v1']` 数据，首次启动会自动搬进 IndexedDB 并清掉旧键；② `theme.keyColor` 会被当作 `accentColor`；③ 缺失的 `layout` 字段回落到默认值。
 
-> ⚠️ 真机截图与 App 图标以 base64 存在 `localStorage`。浏览器配额通常 5–10 MB，存太多大图会满 —— 这正是「备份」按钮存在的原因。更大需求可换 IndexedDB（见 Roadmap）。
+> 真机截图与 App 图标以 base64 内联存储。IndexedDB 配额远大于 localStorage（通常按可用磁盘比例计，数百 MB 起），侧栏底部会显示当前已用量。无 IndexedDB 的环境（极旧浏览器 / 测试）会自动回退到 `localStorage`。
 
 ## 设备规格速查
 
@@ -159,7 +159,8 @@ src/
 ├── index.css
 ├── i18n.js                       # UI 自身的中英文文案
 ├── state/
-│   ├── storage.js                # localStorage 读写、项目 CRUD、备份/恢复、示例项目
+│   ├── idb.js                    # IndexedDB key/value 封装 + 容量估算
+│   ├── storage.js                # 状态树 + IDB 持久化/迁移、项目 CRUD、备份/恢复、示例
 │   ├── storage.test.js
 │   └── useStore.js               # React 订阅 hook
 ├── utils/
@@ -178,9 +179,9 @@ src/
 ## 后续可做（Roadmap）
 
 - [ ] 海报模板预设（一键套用排版风格）
-- [ ] IndexedDB 存储以容纳更多大图
 - [ ] App Icon 生成（1024×1024 + 各尺寸切图）
 - [ ] 直接对接 App Store Connect API 上传
+- [x] ~~IndexedDB 存储以容纳更多大图~~
 - [x] ~~导出/导入项目 JSON 备份文件~~
 - [x] ~~海报排版风格自定义（文字位置/背景/缩放/旋转）~~
 - [x] ~~重排海报顺序~~

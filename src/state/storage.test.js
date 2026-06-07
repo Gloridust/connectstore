@@ -6,6 +6,7 @@ import {
   duplicateProjectById,
   serializeState,
   importState,
+  isHydrated,
   uid,
 } from './storage';
 
@@ -43,6 +44,19 @@ describe('project CRUD', () => {
     const b = createProject('B');
     deleteProject(b);
     expect(getState().currentProjectId).toBe(a);
+  });
+});
+
+describe('persistence meta', () => {
+  it('is hydrated synchronously in the localStorage-fallback (test) env', () => {
+    expect(isHydrated()).toBe(true);
+    expect(getState()._hydrated).toBe(true);
+  });
+
+  it('strips the internal _hydrated flag from serialized backups', () => {
+    createProject('No leak');
+    const json = JSON.parse(serializeState());
+    expect('_hydrated' in json).toBe(false);
   });
 });
 
